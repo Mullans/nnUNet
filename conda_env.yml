@@ -1,0 +1,37 @@
+name: nnUNetDev
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.9
+  - pytorch
+  - torchvision
+  - pytorch-cuda=11.8
+  - numpy>=1.10.2
+  - tqdm
+  - dicom2nifti
+  - scipy
+  - scikit-image>=0.19.3
+  - scikit-learn
+  - pandas
+  - pillow>=7.1.2
+  - SimpleITK>=2.2.1
+  - graphviz
+  - tifffile
+  - nibabel
+  - matplotlib
+  - seaborn
+  - imagecodecs
+  - yacs
+  - einops
+  - segmentation-models-pytorch
+  - pip
+  - pip:
+    - acvl-utils>=0.2,<0.3
+    - dynamic-network-architectures>=0.3.1,<0.4
+    - batchgenerators>=0.25
+    - batchgeneratorsv2
+    - fft-conv-pytorch  # installed in batchgeneratorsv2
+
