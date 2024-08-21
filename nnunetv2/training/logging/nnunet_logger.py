@@ -1,7 +1,9 @@
 import matplotlib
 from batchgenerators.utilities.file_and_folder_operations import join
 
-matplotlib.use('agg')
+backend = matplotlib.get_backend()
+if 'inline' not in str(backend):  # In case using nnUNet in an interactive environment, don't overwrite the backend
+    matplotlib.use('agg')
 import seaborn as sns
 import matplotlib.pyplot as plt
 
