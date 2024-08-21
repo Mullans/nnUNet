@@ -1,8 +1,10 @@
+import segmentation_models_pytorch
 import torch
+from torch import nn
+
 from nnunetv2.training.loss.dice import SoftDiceLoss, MemoryEfficientSoftDiceLoss
 from nnunetv2.training.loss.robust_ce_loss import RobustCrossEntropyLoss, TopKLoss
 from nnunetv2.utilities.helpers import softmax_helper_dim1
-from torch import nn
 
 
 class DC_and_CE_loss(nn.Module):
@@ -153,4 +155,139 @@ class DC_and_topk_loss(nn.Module):
             if self.weight_ce != 0 and (self.ignore_label is None or num_fg > 0) else 0
 
         result = self.weight_ce * ce_loss + self.weight_dice * dc_loss
+        return result
+
+
+
+# ## CUSTOM LOSSES ## #
+class Tversky_and_CE_loss(nn.Module):
+    def __init__(self, tversky_kwargs, ce_kwargs, weight_ce=1, weight_tversky=1, ignore_label=None,
+                 tversky_class=segmentation_models_pytorch.losses.TverskyLoss):
+        """
+        Weights for CE and Dice do not need to sum to one. You can set whatever you want.
+        :param tverksy_kwargs:
+        :param ce_kwargs:
+        :param aggregate:
+        :param square_dice:
+        :param weight_ce:
+        :param weight_tversky:
+        """
+        super().__init__()
+        if ignore_label is not None:
+            ce_kwargs['ignore_index'] = ignore_label
+
+        self.weight_tv = weight_tversky
+        self.weight_ce = weight_ce
+        self.ignore_label = ignore_label
+
+        self.ce = RobustCrossEntropyLoss(**ce_kwargs)
+        self.tv = tversky_class(mode="multiclass", from_logits=True, ignore_index=0, **tversky_kwargs)
+
+    def forward(self, net_output: torch.Tensor, target: torch.Tensor):
+        """
+        target must be b, c, x, y(, z) with c=1
+        :param net_output:
+        :param target:
+        :return:
+        """
+        if self.ignore_label is not None:
+            assert target.shape[1] == 1, 'ignore label is not implemented for one hot encoded target variables ' \
+                                         '(DC_and_CE_loss)'
+            mask = target != self.ignore_label
+            # remove ignore label from target, replace with one of the known labels. It doesn't matter because we
+            # ignore gradients in those areas anyway
+            target_tv = torch.where(mask, target, 0)
+            num_fg = mask.sum()
+        else:
+            target_tv = target
+            mask = None
+
+        tv_loss = self.tv(net_output, target_tv) \
+            if self.weight_tv != 0 else 0
+        ce_loss = self.ce(net_output, target[:, 0]) \
+            if self.weight_ce != 0 and (self.ignore_label is None or num_fg > 0) else 0
+
+        result = self.weight_ce * ce_loss + self.weight_tv * tv_loss
+        return result
+
+
+import numpy as np
+import scipy.ndimage as nd
+class DistanceBCELoss(nn.Module):
+    def __init__(self, err_type='under'):
+        """_summary_
+        Add a distance transform to the binary cross entropy loss to penalize errors based on their distance to the target.
+        :param err_type: str, either 'over', 'under', or 'both', whether to penalize over- or under-segmentation errors or both
+        """
+        super().__init__()
+        assert err_type in ['over', 'under', 'both'], 'err_type must be "over", "under" or "both"'
+        self.err_type = err_type
+
+    def forward(self, net_output: torch.Tensor, target: torch.Tensor):
+        """
+        target must be b, c, x, y(, z) with c=1
+        :param net_output:
+        :param target:
+        :return:
+        """
+        target_label = torch.zeros_like(net_output, dtype=net_output.dtype).scatter_(1, target.long(), True)
+        target_mask = (target > 0.5).float().detach().cpu().numpy()
+        target_dist = np.zeros_like(target_mask)
+        if self.err_type == 'under' or self.err_type == 'both':
+            target_dist += np.stack([
+                nd.distance_transform_edt(target_mask[idx]) for idx in range(target_mask.shape[0])
+            ])
+        elif self.err_type == 'over' or self.err_type == 'both':
+            target_mask = 1 - target_mask
+            target_dist += np.stack([
+                nd.distance_transform_edt(target_mask[idx]) for idx in range(target_mask.shape[0])
+            ])
+        target_dist += 1
+        target_dist = torch.from_numpy(target_dist).to(device=target.device, dtype=target.dtype)
+        result = torch.nn.functional.binary_cross_entropy_with_logits(net_output, target_label, weight=target_dist)
+        return result
+
+class DistanceComboLoss(nn.Module):
+    def __init__(self, tversky_kwargs, ce_kwargs, weight_ce=1, weight_tversky=1, weight_dist=1,
+                 ignore_label=None, tversky_class=segmentation_models_pytorch.losses.TverskyLoss,
+                 dist_err_type='under'):
+        super().__init__()
+        if ignore_label is not None:
+            ce_kwargs['ignore_index'] = ignore_label
+
+        self.weight_tv = weight_tversky
+        self.weight_ce = weight_ce
+        self.weight_dist = weight_dist
+        self.ignore_label = ignore_label
+
+        self.ce = RobustCrossEntropyLoss(**ce_kwargs)
+        self.tv = tversky_class(mode="multiclass", from_logits=True, ignore_index=0, **tversky_kwargs)
+        self.de = DistanceBCELoss(err_type=dist_err_type)
+
+    def forward(self, net_output: torch.Tensor, target: torch.Tensor):
+        """
+        target must be b, c, x, y(, z) with c=1
+        :param net_output:
+        :param target:
+        :return:
+        """
+        if self.ignore_label is not None:
+            assert target.shape[1] == 1, 'ignore label is not implemented for one hot encoded target variables ' \
+                                         '(DC_and_CE_loss)'
+            mask = target != self.ignore_label
+            # remove ignore label from target, replace with one of the known labels. It doesn't matter because we
+            # ignore gradients in those areas anyway
+            target_tv = torch.where(mask, target, 0)
+            num_fg = mask.sum()
+        else:
+            target_tv = target
+            mask = None
+
+        tv_loss = self.tv(net_output, target_tv) \
+            if self.weight_tv != 0 else 0
+        ce_loss = self.ce(net_output, target[:, 0]) \
+            if self.weight_ce != 0 and (self.ignore_label is None or num_fg > 0) else 0
+        dist_loss = self.de(net_output, target_tv) if self.weight_dist != 0 else 0
+
+        result = self.weight_ce * ce_loss + self.weight_tv * tv_loss + self.weight_dist * dist_loss
         return result
