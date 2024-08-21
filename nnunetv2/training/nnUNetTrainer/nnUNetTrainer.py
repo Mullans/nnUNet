@@ -71,7 +71,7 @@ from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
 
 class nnUNetTrainer(object):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
-                 device: torch.device = torch.device('cuda')):
+                 device: torch.device = torch.device('cuda'), num_epochs: int = 1000, verbose: bool = True):
         # From https://grugbrain.dev/. Worth a read ya big brains ;-)
 
         # apex predator of grug is complexity
@@ -96,15 +96,17 @@ class nnUNetTrainer(object):
 
         # print what device we are using
         if self.is_ddp:  # implicitly it's clear that we use cuda in this case
-            print(f"I am local rank {self.local_rank}. {device_count()} GPUs are available. The world size is "
-                  f"{dist.get_world_size()}."
-                  f"Setting device to {self.device}")
+            if verbose:
+                print(f"I am local rank {self.local_rank}. {device_count()} GPUs are available. The world size is "
+                    f"{dist.get_world_size()}."
+                    f"Setting device to {self.device}")
             self.device = torch.device(type='cuda', index=self.local_rank)
         else:
             if self.device.type == 'cuda':
                 # we might want to let the user pick this but for now please pick the correct GPU with CUDA_VISIBLE_DEVICES=X
                 self.device = torch.device(type='cuda', index=0)
-            print(f"Using device: {self.device}")
+            if verbose:
+                print(f"Using device: {self.device}")
 
         # loading and saving this class for continuing from checkpoint should not happen based on pickling. This
         # would also pickle the network etc. Bad, bad. Instead we just reinstantiate and then load the checkpoint we
@@ -149,7 +151,7 @@ class nnUNetTrainer(object):
         self.oversample_foreground_percent = 0.33
         self.num_iterations_per_epoch = 250
         self.num_val_iterations_per_epoch = 50
-        self.num_epochs = 1000
+        self.num_epochs = num_epochs
         self.current_epoch = 0
         self.enable_deep_supervision = True
 
@@ -200,7 +202,7 @@ class nnUNetTrainer(object):
                                "nnU-Net: a self-configuring method for deep learning-based biomedical image segmentation. "
                                "Nature methods, 18(2), 203-211.\n"
                                "#######################################################################\n",
-                               also_print_to_console=True, add_timestamp=False)
+                               also_print_to_console=verbose, add_timestamp=False)
 
     def initialize(self):
         if not self.was_initialized:
