@@ -9,12 +9,16 @@ import numpy as np
 class nnUNetTrainerDistanceComboLoss(nnUNetTrainer):
     tversky_kwargs = {
         'smooth': 0.0,
-        'alpha': 0.3,
-        'beta': 0.7,
-        'gamma': 1.333
+        'alpha': 0.3, # Weight constant that penalize model for FPs (False Positives)
+        'beta': 0.7, # Weight constant that penalize model for FNs (False Negatives)
+        'gamma': 1.333 #  Constant that squares the error function. Defaults to ``1.0``
     }
     ce_kwargs = {
         'label_smoothing': 1e-4
+    }
+    dist_kwargs = {
+        "under_weight": 1.0,
+        "over_weight": 1.0
     }
     loss_weights = [1, 1, 1]
     def _build_loss(self):
@@ -45,3 +49,20 @@ class nnUNetTrainerDistanceComboLoss(nnUNetTrainer):
             # now wrap the loss
             loss = DeepSupervisionWrapper(loss, weights)
         return loss
+
+
+class nnUNetTrainerDistanceComboLoss_BG(nnUNetTrainerDistanceComboLoss):
+    tversky_kwargs = {
+        'smooth': 0.01,
+        'alpha': 0.5, # Weight constant that penalize model for FPs (False Positives)
+        'beta': 0.5, # Weight constant that penalize model for FNs (False Negatives)
+        'gamma': 1.0 #  Constant that squares the error function. Defaults to ``1.0``
+    }
+    ce_kwargs = {
+        'label_smoothing': 1e-4
+    }
+    dist_kwargs = {
+        "under_weight": 1.0,
+        "over_weight": 0.5,
+    }
+    loss_weights = [1, 1, 1]
