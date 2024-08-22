@@ -30,11 +30,11 @@ class nnUNetTrainerDistanceComboLoss(nnUNetTrainer):
         loss = DistanceComboLoss(
             self.tversky_kwargs,
             self.ce_kwargs,
+            self.dist_kwargs,
             weight_ce=self.loss_weights[0],
             weight_tversky=self.loss_weights[1],
             weight_dist=self.loss_weights[2],
             ignore_label=self.label_manager.ignore_label if self.label_manager.has_ignore_label else -100,
-            dist_err_type="both"
         )
 
         # we give each output a weight which decreases exponentially (division by 2) as the resolution decreases
@@ -62,7 +62,24 @@ class nnUNetTrainerDistanceComboLoss_BG(nnUNetTrainerDistanceComboLoss):
         'label_smoothing': 1e-4
     }
     dist_kwargs = {
-        "under_weight": 1.0,
-        "over_weight": 0.5,
+        "under_weight": 0.75,
+        "over_weight": 0.25,
+    }
+    loss_weights = [1, 1, 1]
+
+
+class nnUNetTrainerDistanceComboLoss_BG2(nnUNetTrainerDistanceComboLoss):
+    tversky_kwargs = {
+        'smooth': 1e-4,
+        'alpha': 0.7, # Weight constant that penalize model for FPs (False Positives)
+        'beta': 0.3, # Weight constant that penalize model for FNs (False Negatives)
+        'gamma': 1.25 #  Constant that squares the error function. Defaults to ``1.0``
+    }
+    ce_kwargs = {
+        'label_smoothing': 1e-4
+    }
+    dist_kwargs = {
+        "under_weight": 0.75,
+        "over_weight": 0.25,
     }
     loss_weights = [1, 1, 1]
