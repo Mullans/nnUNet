@@ -9,9 +9,9 @@ import numpy as np
 class nnUNetTrainerTverskyCELoss(nnUNetTrainer):
     tversky_kwargs = {
         'smooth': 0.0,
-        'alpha': 0.3,
-        'beta': 0.7,
-        'gamma': 1.333
+        'alpha': 0.3, # Weight constant that penalize model for FPs (False Positives)
+        'beta': 0.7, # Weight constant that penalize model for FNs (False Negatives)
+        'gamma': 1.333 #  Constant that squares the error function. Defaults to ``1.0``
     }
     ce_kwargs = {
         'label_smoothing': 1e-4
@@ -19,6 +19,7 @@ class nnUNetTrainerTverskyCELoss(nnUNetTrainer):
     loss_weights = [1, 1]
     def _build_loss(self):
         assert not self.label_manager.has_regions, "regions not supported by this trainer"
+
         # alpha = beta = 0.5 -> DiceLoss
         # alpha = beta = 1 -> Tanimoto coefficient
         # alpha + beta = 1 -> F_beta scores

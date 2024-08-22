@@ -214,14 +214,14 @@ class Tversky_and_CE_loss(nn.Module):
 import numpy as np
 import scipy.ndimage as nd
 class DistanceBCELoss(nn.Module):
-    def __init__(self, err_type='under'):
+    def __init__(self, under_weight: float = 1.0, over_weight: float = 1.0):
         """_summary_
         Add a distance transform to the binary cross entropy loss to penalize errors based on their distance to the target.
         :param err_type: str, either 'over', 'under', or 'both', whether to penalize over- or under-segmentation errors or both
         """
         super().__init__()
-        assert err_type in ['over', 'under', 'both'], 'err_type must be "over", "under" or "both"'
-        self.err_type = err_type
+        self.under_weight = under_weight
+        self.over_weight = over_weight
 
     def forward(self, net_output: torch.Tensor, target: torch.Tensor):
         """
@@ -233,11 +233,11 @@ class DistanceBCELoss(nn.Module):
         target_label = torch.zeros_like(net_output, dtype=net_output.dtype).scatter_(1, target.long(), True)
         target_mask = (target > 0.5).float().detach().cpu().numpy()
         target_dist = np.zeros_like(target_mask)
-        if self.err_type == 'under' or self.err_type == 'both':
+        if self.under_weight != 0.0:
             target_dist += np.stack([
                 nd.distance_transform_edt(target_mask[idx]) for idx in range(target_mask.shape[0])
             ])
-        elif self.err_type == 'over' or self.err_type == 'both':
+        elif self.over_weight != 0.0:
             target_mask = 1 - target_mask
             target_dist += np.stack([
                 nd.distance_transform_edt(target_mask[idx]) for idx in range(target_mask.shape[0])
@@ -248,9 +248,8 @@ class DistanceBCELoss(nn.Module):
         return result
 
 class DistanceComboLoss(nn.Module):
-    def __init__(self, tversky_kwargs, ce_kwargs, weight_ce=1, weight_tversky=1, weight_dist=1,
-                 ignore_label=None, tversky_class=segmentation_models_pytorch.losses.TverskyLoss,
-                 dist_err_type='under'):
+    def __init__(self, tversky_kwargs, ce_kwargs, dist_kwargs, weight_ce=1, weight_tversky=1, weight_dist=1,
+                 ignore_label=None, tversky_class=segmentation_models_pytorch.losses.TverskyLoss):
         super().__init__()
         if ignore_label is not None:
             ce_kwargs['ignore_index'] = ignore_label
@@ -262,7 +261,7 @@ class DistanceComboLoss(nn.Module):
 
         self.ce = RobustCrossEntropyLoss(**ce_kwargs)
         self.tv = tversky_class(mode="multiclass", from_logits=True, ignore_index=0, **tversky_kwargs)
-        self.de = DistanceBCELoss(err_type=dist_err_type)
+        self.de = DistanceBCELoss(**dist_kwargs)
 
     def forward(self, net_output: torch.Tensor, target: torch.Tensor):
         """
