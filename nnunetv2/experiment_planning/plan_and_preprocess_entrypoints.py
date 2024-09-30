@@ -23,9 +23,9 @@ def extract_fingerprint_entry():
     parser.add_argument('--verbose', required=False, action='store_true',
                         help='Set this to print a lot of stuff. Useful for debugging. Will disable progress bar! '
                              'Recommended for cluster environments')
+    parser.add_argument('--extract-global', required=False, action='store_true', help='[OPTIONAL] Use manual globals for intensity values')
     args, unrecognized_args = parser.parse_known_args()
-    extract_fingerprints(args.d, args.fpe, args.np, args.verify_dataset_integrity, args.clean, args.verbose)
-
+    extract_fingerprints(args.d, args.fpe, args.np, args.verify_dataset_integrity, args.clean,args.extract_global, args.verbose)
 
 def plan_experiment_entry():
     import argparse
@@ -62,9 +62,10 @@ def plan_experiment_entry():
                              'differently named plans file such that the nnunet default plans are not '
                              'overwritten. You will then need to specify your custom plans file with -p whenever '
                              'running other nnunet commands (training, inference etc)')
+    parser.add_argument('--patch-size', type=str, required=False, default=None, help="[OPTIONAL] Manual override patch size for 2d")
     args, unrecognized_args = parser.parse_known_args()
     plan_experiments(args.d, args.pl, args.gpu_memory_target, args.preprocessor_name, args.overwrite_target_spacing,
-                     args.overwrite_plans_name)
+                     args.overwrite_plans_name, args.patch_size)
 
 
 def preprocess_entry():
@@ -158,6 +159,7 @@ def plan_and_preprocess_entry():
                         help='[OPTIONAL] Configurations for which the preprocessing should be run. Default: 2d 3d_fullres '
                              '3d_lowres. 3d_cascade_fullres does not need to be specified because it uses the data '
                              'from 3d_fullres. Configurations that do not exist for some dataset will be skipped.')
+    parser.add_argument('--patch-size', type=str, required=False, default=None, help="[OPTIONAL] Manual override patch size for 2d")
     parser.add_argument('-np', type=int, nargs='+', default=None, required=False,
                         help="[OPTIONAL] Use this to define how many processes are to be used. If this is just one number then "
                              "this number of processes is used for all configurations specified with -c. If it's a "
@@ -170,6 +172,7 @@ def plan_and_preprocess_entry():
                              "RAM available. Image resampling takes up a lot of RAM. MONITOR RAM USAGE AND "
                              "DECREASE -np IF YOUR RAM FILLS UP TOO MUCH!. Default: 8 processes for 2d, 4 "
                              "for 3d_fullres, 8 for 3d_lowres and 4 for everything else")
+    parser.add_argument('--extract-global', required=False, action='store_true', help='[OPTIONAL] Use manual globals for intensity values')
     parser.add_argument('--verbose', required=False, action='store_true',
                         help='Set this to print a lot of stuff. Useful for debugging. Will disable progress bar! '
                              'Recommended for cluster environments')
@@ -177,12 +180,12 @@ def plan_and_preprocess_entry():
 
     # fingerprint extraction
     print("Fingerprint extraction...")
-    extract_fingerprints(args.d, args.fpe, args.npfp, args.verify_dataset_integrity, args.clean, args.verbose)
+    extract_fingerprints(args.d, args.fpe, args.npfp, args.verify_dataset_integrity, args.clean, args.extract_global, args.verbose)
 
     # experiment planning
     print('Experiment planning...')
     plans_identifier = plan_experiments(args.d, args.pl, args.gpu_memory_target, args.preprocessor_name,
-                                        args.overwrite_target_spacing, args.overwrite_plans_name)
+                                        args.overwrite_target_spacing, args.overwrite_plans_name, args.patch_size)
 
     # manage default np
     if args.np is None:

@@ -1,6 +1,6 @@
 import shutil
 from copy import deepcopy
-from typing import List, Union, Tuple
+from typing import Optional, List, Union, Tuple
 
 import numpy as np
 import torch
@@ -26,7 +26,7 @@ class ExperimentPlanner(object):
                  gpu_memory_target_in_gb: float = 8,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetPlans',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         """
         overwrite_target_spacing only affects 3d_fullres! (but by extension 3d_lowres which starts with fullres may
         also be affected
@@ -38,6 +38,7 @@ class ExperimentPlanner(object):
         preprocessed_folder = join(nnUNet_preprocessed, self.dataset_name)
         self.dataset_json = load_json(join(self.raw_dataset_folder, 'dataset.json'))
         self.dataset = get_filenames_of_train_images_and_targets(self.raw_dataset_folder, self.dataset_json)
+        self.manual_patch_size = np.asarray(patch_size) if patch_size is not None else None
 
         # load dataset fingerprint
         if not isfile(join(preprocessed_folder, 'dataset_fingerprint.json')):
@@ -387,7 +388,7 @@ class ExperimentPlanner(object):
             'data_identifier': data_identifier,
             'preprocessor_name': self.preprocessor_name,
             'batch_size': batch_size,
-            'patch_size': patch_size,
+            'patch_size': patch_size if self.manual_patch_size is None else self.manual_patch_size,
             'median_image_size_in_voxels': median_shape,
             'spacing': spacing,
             'normalization_schemes': normalization_schemes,
