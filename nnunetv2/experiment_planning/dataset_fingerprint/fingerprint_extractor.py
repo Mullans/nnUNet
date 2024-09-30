@@ -16,7 +16,7 @@ from nnunetv2.utilities.utils import get_filenames_of_train_images_and_targets
 
 
 class DatasetFingerprintExtractor(object):
-    def __init__(self, dataset_name_or_id: Union[str, int], num_processes: int = 8, verbose: bool = False):
+    def __init__(self, dataset_name_or_id: Union[str, int], num_processes: int = 8, force_global: bool = False, verbose: bool = False):
         """
         extracts the dataset fingerprint used for experiment planning. The dataset fingerprint will be saved as a
         json file in the input_folder
@@ -32,6 +32,7 @@ class DatasetFingerprintExtractor(object):
         self.num_processes = num_processes
         self.dataset_json = load_json(join(self.input_folder, 'dataset.json'))
         self.dataset = get_filenames_of_train_images_and_targets(self.input_folder, self.dataset_json)
+        self.force_global = force_global
 
         # We don't want to use all foreground voxels because that can accumulate a lot of data (out of memory). It is
         # also not critically important to get all pixels as long as there are enough. Let's use 10e7 voxels in total
@@ -175,17 +176,28 @@ class DatasetFingerprintExtractor(object):
             intensity_statistics_per_channel = {}
             percentiles = np.array((0.5, 50.0, 99.5))
             for i in range(num_channels):
-                percentile_00_5, median, percentile_99_5 = np.percentile(foreground_intensities_per_channel[i],
-                                                                         percentiles)
-                intensity_statistics_per_channel[i] = {
-                    'mean': float(np.mean(foreground_intensities_per_channel[i])),
-                    'median': float(median),
-                    'std': float(np.std(foreground_intensities_per_channel[i])),
-                    'min': float(np.min(foreground_intensities_per_channel[i])),
-                    'max': float(np.max(foreground_intensities_per_channel[i])),
-                    'percentile_99_5': float(percentile_99_5),
-                    'percentile_00_5': float(percentile_00_5),
-                }
+                if self.force_global:
+                    intensity_statistics_per_channel[i] = {
+                        'mean': 131.684,
+                        'median': 139.0,
+                        'std': 63.140,
+                        'min': 0.0,
+                        'max': 255.0,
+                        'percentile_99_5': 253.0,
+                        'percentile_00_5': 0.0,
+                    }
+                else:
+                    percentile_00_5, median, percentile_99_5 = np.percentile(foreground_intensities_per_channel[i],
+                                                                            percentiles)
+                    intensity_statistics_per_channel[i] = {
+                        'mean': float(np.mean(foreground_intensities_per_channel[i])),
+                        'median': float(median),
+                        'std': float(np.std(foreground_intensities_per_channel[i])),
+                        'min': float(np.min(foreground_intensities_per_channel[i])),
+                        'max': float(np.max(foreground_intensities_per_channel[i])),
+                        'percentile_99_5': float(percentile_99_5),
+                        'percentile_00_5': float(percentile_00_5),
+                    }
 
             fingerprint = {
                     "spacings": spacings,

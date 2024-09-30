@@ -1,6 +1,6 @@
 import numpy as np
 from copy import deepcopy
-from typing import Union, List, Tuple
+from typing import Optional, Union, List, Tuple
 
 from dynamic_network_architectures.architectures.unet import ResidualEncoderUNet
 from dynamic_network_architectures.building_blocks.helper import convert_dim_to_conv_op, get_matching_instancenorm
@@ -16,9 +16,9 @@ class ResEncUNetPlanner(ExperimentPlanner):
                  gpu_memory_target_in_gb: float = 8,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetResEncUNetPlans',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name,
-                         overwrite_target_spacing, suppress_transpose)
+                         overwrite_target_spacing, suppress_transpose, patch_size)
         self.UNet_class = ResidualEncoderUNet
         # the following two numbers are really arbitrary and were set to reproduce default nnU-Net's configurations as
         # much as possible
@@ -195,11 +195,12 @@ class ResEncUNetPlanner(ExperimentPlanner):
         normalization_schemes, mask_is_used_for_norm = \
             self.determine_normalization_scheme_and_whether_mask_is_used_for_norm()
 
+        # TODO - UPDATE THIS
         plan = {
             'data_identifier': data_identifier,
             'preprocessor_name': self.preprocessor_name,
             'batch_size': batch_size,
-            'patch_size': patch_size,
+            'patch_size': patch_size if self.manual_patch_size is None else self.manual_patch_size,
             'median_image_size_in_voxels': median_shape,
             'spacing': spacing,
             'normalization_schemes': normalization_schemes,

@@ -19,7 +19,7 @@ def extract_fingerprint_dataset(dataset_id: int,
                                 fingerprint_extractor_class: Type[
                                     DatasetFingerprintExtractor] = DatasetFingerprintExtractor,
                                 num_processes: int = default_num_processes, check_dataset_integrity: bool = False,
-                                clean: bool = True, verbose: bool = True):
+                                clean: bool = True, force_global: bool = False, verbose: bool = True):
     """
     Returns the fingerprint as a dictionary (additionally to saving it)
     """
@@ -29,13 +29,13 @@ def extract_fingerprint_dataset(dataset_id: int,
     if check_dataset_integrity:
         verify_dataset_integrity(join(nnUNet_raw, dataset_name), num_processes)
 
-    fpe = fingerprint_extractor_class(dataset_id, num_processes, verbose=verbose)
+    fpe = fingerprint_extractor_class(dataset_id, num_processes, force_global=force_global, verbose=verbose)
     return fpe.run(overwrite_existing=clean)
 
 
 def extract_fingerprints(dataset_ids: List[int], fingerprint_extractor_class_name: str = 'DatasetFingerprintExtractor',
                          num_processes: int = default_num_processes, check_dataset_integrity: bool = False,
-                         clean: bool = True, verbose: bool = True):
+                         clean: bool = True, force_global: bool = False, verbose: bool = True):
     """
     clean = False will not actually run this. This is just a switch for use with nnUNetv2_plan_and_preprocess where
     we don't want to rerun fingerprint extraction every time.
@@ -45,14 +45,14 @@ def extract_fingerprints(dataset_ids: List[int], fingerprint_extractor_class_nam
                                                               current_module="nnunetv2.experiment_planning")
     for d in dataset_ids:
         extract_fingerprint_dataset(d, fingerprint_extractor_class, num_processes, check_dataset_integrity, clean,
-                                    verbose)
+                                    force_global, verbose)
 
 
 def plan_experiment_dataset(dataset_id: int,
                             experiment_planner_class: Type[ExperimentPlanner] = ExperimentPlanner,
                             gpu_memory_target_in_gb: float = None, preprocess_class_name: str = 'DefaultPreprocessor',
                             overwrite_target_spacing: Optional[Tuple[float, ...]] = None,
-                            overwrite_plans_name: Optional[str] = None) -> Tuple[dict, str]:
+                            overwrite_plans_name: Optional[str] = None, patch_size: Optional[str] = None) -> Tuple[dict, str]:
     """
     overwrite_target_spacing ONLY applies to 3d_fullres and 3d_cascade fullres!
     """
@@ -61,6 +61,10 @@ def plan_experiment_dataset(dataset_id: int,
         kwargs['plans_name'] = overwrite_plans_name
     if gpu_memory_target_in_gb is not None:
         kwargs['gpu_memory_target_in_gb'] = gpu_memory_target_in_gb
+
+    if patch_size is not None:
+        patch_size = tuple([int(i) for i in patch_size.split(',') if i != ''])
+        kwargs['patch_size'] = patch_size
 
     planner = experiment_planner_class(dataset_id,
                                        preprocessor_name=preprocess_class_name,
@@ -76,7 +80,7 @@ def plan_experiment_dataset(dataset_id: int,
 def plan_experiments(dataset_ids: List[int], experiment_planner_class_name: str = 'ExperimentPlanner',
                      gpu_memory_target_in_gb: float = None, preprocess_class_name: str = 'DefaultPreprocessor',
                      overwrite_target_spacing: Optional[Tuple[float, ...]] = None,
-                     overwrite_plans_name: Optional[str] = None):
+                     overwrite_plans_name: Optional[str] = None, patch_size: Optional[str] = None):
     """
     overwrite_target_spacing ONLY applies to 3d_fullres and 3d_cascade fullres!
     """
@@ -93,7 +97,7 @@ def plan_experiments(dataset_ids: List[int], experiment_planner_class_name: str 
     for d in dataset_ids:
         _, plans_identifier = plan_experiment_dataset(d, experiment_planner, gpu_memory_target_in_gb,
                                                       preprocess_class_name,
-                                                      overwrite_target_spacing, overwrite_plans_name)
+                                                      overwrite_target_spacing, overwrite_plans_name, patch_size)
     return plans_identifier
 
 
