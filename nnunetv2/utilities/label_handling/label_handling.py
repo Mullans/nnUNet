@@ -93,9 +93,18 @@ class LabelManager(object):
                 if isinstance(r, list):
                     r = tuple(r)
                 regions.append(r)
-            assert len(self.regions_class_order) == len(regions), 'regions_class_order must have as ' \
-                                                                  'many entries as there are ' \
-                                                                  'regions'
+            check_regions = set()
+            for region in regions:
+                if isinstance(region, int):
+                    check_regions.add(region)
+                elif isinstance(region, (tuple, list)):
+                    check_regions.update(set(region))
+                else:
+                    raise RuntimeError(f"Unexpected region type {type(region)}")
+            assert set(self.regions_class_order) == set(check_regions), 'regions_class_order must contain all regions'
+            # assert len(self.regions_class_order) == len(regions), 'regions_class_order must have as ' \
+            #                                                       'many entries as there are ' \
+            #                                                       'regions'
             return regions
 
     def _determine_ignore_label(self) -> Union[None, int]:
