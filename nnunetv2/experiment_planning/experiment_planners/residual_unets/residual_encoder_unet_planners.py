@@ -1,4 +1,5 @@
 import warnings
+from typing import Optional
 
 import numpy as np
 from copy import deepcopy
@@ -19,7 +20,7 @@ class ResEncUNetPlanner(ExperimentPlanner):
                  gpu_memory_target_in_gb: float = 8,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetResEncUNetPlans',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name,
                          overwrite_target_spacing, suppress_transpose)
         self.UNet_class = ResidualEncoderUNet
@@ -29,6 +30,7 @@ class ResEncUNetPlanner(ExperimentPlanner):
         self.UNet_reference_val_2d = 135000000
         self.UNet_blocks_per_stage_encoder = (1, 3, 4, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6)
         self.UNet_blocks_per_stage_decoder = (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+        self.manual_patch_size = np.asarray(patch_size) if patch_size is not None else None
 
     def generate_data_identifier(self, configuration_name: str) -> str:
         """
@@ -90,6 +92,11 @@ class ResEncUNetPlanner(ExperimentPlanner):
         shape_must_be_divisible_by = get_pool_and_conv_props(spacing, initial_patch_size,
                                                              self.UNet_featuremap_min_edge_length,
                                                              999999)
+        if self.manual_patch_size is not None:
+            if len(self.manual_patch_size) == 1:
+                patch_size = [self.manual_patch_size[0]] * len(spacing)
+            else:
+                patch_size = list(self.manual_patch_size)
         num_stages = len(pool_op_kernel_sizes)
 
         norm = get_matching_instancenorm(unet_conv_op)
@@ -226,13 +233,13 @@ class nnUNetPlannerResEncM(ResEncUNetPlanner):
                  gpu_memory_target_in_gb: float = 8,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetResEncUNetMPlans',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         if gpu_memory_target_in_gb != 8:
             warnings.warn("WARNING: You are running nnUNetPlannerM with a non-standard gpu_memory_target_in_gb. "
                           f"Expected 8, got {gpu_memory_target_in_gb}."
                           "You should only see this warning if you modified this value intentionally!!")
         super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name,
-                         overwrite_target_spacing, suppress_transpose)
+                         overwrite_target_spacing, suppress_transpose, patch_size)
         self.UNet_class = ResidualEncoderUNet
 
         self.UNet_vram_target_GB = gpu_memory_target_in_gb
@@ -252,13 +259,13 @@ class nnUNetPlannerResEncL(ResEncUNetPlanner):
                  gpu_memory_target_in_gb: float = 24,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetResEncUNetLPlans',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         if gpu_memory_target_in_gb != 24:
             warnings.warn("WARNING: You are running nnUNetPlannerL with a non-standard gpu_memory_target_in_gb. "
                           f"Expected 24, got {gpu_memory_target_in_gb}."
                           "You should only see this warning if you modified this value intentionally!!")
         super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name,
-                         overwrite_target_spacing, suppress_transpose)
+                         overwrite_target_spacing, suppress_transpose, patch_size)
         self.UNet_class = ResidualEncoderUNet
 
         self.UNet_vram_target_GB = gpu_memory_target_in_gb
@@ -277,13 +284,13 @@ class nnUNetPlannerResEncXL(ResEncUNetPlanner):
                  gpu_memory_target_in_gb: float = 40,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetResEncUNetXLPlans',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         if gpu_memory_target_in_gb != 40:
             warnings.warn("WARNING: You are running nnUNetPlannerXL with a non-standard gpu_memory_target_in_gb. "
                           f"Expected 40, got {gpu_memory_target_in_gb}."
                           "You should only see this warning if you modified this value intentionally!!")
         super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name,
-                         overwrite_target_spacing, suppress_transpose)
+                         overwrite_target_spacing, suppress_transpose, patch_size)
         self.UNet_class = ResidualEncoderUNet
 
         self.UNet_vram_target_GB = gpu_memory_target_in_gb

@@ -1,4 +1,4 @@
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional
 
 from nnunetv2.configuration import ANISO_THRESHOLD
 from nnunetv2.experiment_planning.experiment_planners.default_experiment_planner import ExperimentPlanner
@@ -12,9 +12,9 @@ class nnUNetPlannerResEncL_torchres(nnUNetPlannerResEncL):
                  gpu_memory_target_in_gb: float = 24,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetResEncUNetLPlans_torchres',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name,
-                         overwrite_target_spacing, suppress_transpose)
+                         overwrite_target_spacing, suppress_transpose, patch_size)
 
     def generate_data_identifier(self, configuration_name: str) -> str:
         """
@@ -69,9 +69,9 @@ class nnUNetPlannerResEncL_torchres_sepz(nnUNetPlannerResEncL):
                  gpu_memory_target_in_gb: float = 24,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetResEncUNetLPlans_torchres_sepz',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name,
-                         overwrite_target_spacing, suppress_transpose)
+                         overwrite_target_spacing, suppress_transpose, patch_size)
 
     def generate_data_identifier(self, configuration_name: str) -> str:
         """
@@ -129,9 +129,9 @@ class nnUNetPlanner_torchres(ExperimentPlanner):
                  gpu_memory_target_in_gb: float = 8,
                  preprocessor_name: str = 'DefaultPreprocessor', plans_name: str = 'nnUNetPlans_torchres',
                  overwrite_target_spacing: Union[List[float], Tuple[float, ...]] = None,
-                 suppress_transpose: bool = False):
+                 suppress_transpose: bool = False, patch_size: Optional[tuple[int]] = None):
         super().__init__(dataset_name_or_id, gpu_memory_target_in_gb, preprocessor_name, plans_name,
-                         overwrite_target_spacing, suppress_transpose)
+                         overwrite_target_spacing, suppress_transpose, patch_size)
 
     def generate_data_identifier(self, configuration_name: str) -> str:
         """

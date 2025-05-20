@@ -87,6 +87,11 @@ class ResEncUNetPlanner(ExperimentPlanner):
         shape_must_be_divisible_by = get_pool_and_conv_props(spacing, initial_patch_size,
                                                              self.UNet_featuremap_min_edge_length,
                                                              999999)
+        if self.manual_patch_size is not None:
+            if len(self.manual_patch_size) == 1:
+                patch_size = [self.manual_patch_size[0]] * len(spacing)
+            else:
+                patch_size = list(self.manual_patch_size)
         num_stages = len(pool_op_kernel_sizes)
 
         norm = get_matching_instancenorm(unet_conv_op)
@@ -195,12 +200,11 @@ class ResEncUNetPlanner(ExperimentPlanner):
         normalization_schemes, mask_is_used_for_norm = \
             self.determine_normalization_scheme_and_whether_mask_is_used_for_norm()
 
-        # TODO - UPDATE THIS
         plan = {
             'data_identifier': data_identifier,
             'preprocessor_name': self.preprocessor_name,
             'batch_size': batch_size,
-            'patch_size': patch_size if self.manual_patch_size is None else self.manual_patch_size,
+            'patch_size': patch_size,
             'median_image_size_in_voxels': median_shape,
             'spacing': spacing,
             'normalization_schemes': normalization_schemes,
