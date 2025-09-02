@@ -1,10 +1,12 @@
-import segmentation_models_pytorch
+import numpy as np
+import scipy.ndimage as nd
 import torch
 from torch import nn
 
 from nnunetv2.training.loss.dice import SoftDiceLoss, MemoryEfficientSoftDiceLoss
 from nnunetv2.training.loss.robust_ce_loss import RobustCrossEntropyLoss, TopKLoss
 from nnunetv2.utilities.helpers import softmax_helper_dim1
+from nnunetv2.training.loss.tversky_loss import TverskyLoss
 
 
 class DC_and_CE_loss(nn.Module):
@@ -162,7 +164,7 @@ class DC_and_topk_loss(nn.Module):
 # ## CUSTOM LOSSES ## #
 class Tversky_and_CE_loss(nn.Module):
     def __init__(self, tversky_kwargs, ce_kwargs, weight_ce=1, weight_tversky=1, ignore_label=None,
-                 tversky_class=segmentation_models_pytorch.losses.TverskyLoss):
+                 tversky_class=TverskyLoss):
         """
         Weights for CE and Dice do not need to sum to one. You can set whatever you want.
         :param tverksy_kwargs:
@@ -211,8 +213,7 @@ class Tversky_and_CE_loss(nn.Module):
         return result
 
 
-import numpy as np
-import scipy.ndimage as nd
+
 class DistanceBCELoss(nn.Module):
     def __init__(self, under_weight: float = 1.0, over_weight: float = 1.0):
         """_summary_
@@ -249,7 +250,7 @@ class DistanceBCELoss(nn.Module):
 
 class DistanceComboLoss(nn.Module):
     def __init__(self, tversky_kwargs, ce_kwargs, dist_kwargs, weight_ce=1, weight_tversky=1, weight_dist=1,
-                 ignore_label=None, tversky_class=segmentation_models_pytorch.losses.TverskyLoss):
+                 ignore_label=None, tversky_class=TverskyLoss):
         super().__init__()
         if ignore_label is not None:
             ce_kwargs['ignore_index'] = ignore_label
