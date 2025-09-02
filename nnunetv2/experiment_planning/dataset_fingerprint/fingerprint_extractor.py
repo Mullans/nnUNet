@@ -177,13 +177,19 @@ class DatasetFingerprintExtractor(object):
             for i in range(num_channels):
                 if self.force_global:
                     intensity_statistics_per_channel[i] = {
-                        'mean': 131.684,
-                        'median': 139.0,
-                        'std': 63.140,
+                        # NOTE - Global average values from nhd research data from ALL image types
+                        'mean': 128.06,
+                        'median': 134.15,
+                        'std': 57.89,
                         'min': 0.0,
                         'max': 255.0,
-                        'percentile_99_5': 253.0,
-                        'percentile_00_5': 0.0,
+                        'percentile_99_5': 235.11,
+                        'percentile_00_5': 3.95,
+                        # 'mean': 131.684,
+                        # 'median': 139.0,
+                        # 'std': 63.140,
+                        # 'percentile_99_5': 253.0,
+                        # 'percentile_00_5': 0.0,
                     }
                 else:
                     percentile_00_5, median, percentile_99_5 = np.percentile(foreground_intensities_per_channel[i],
